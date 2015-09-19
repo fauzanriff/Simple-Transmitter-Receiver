@@ -7,34 +7,63 @@
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
+#include "ClientSocket.h"
+#include "SocketException.h"
+
 using namespace std;
 
-//Transmitter
+//Transmitter - Client
 
-int main(int argc, char *argv[]){
 //Init
-	string TSay = "Transmitter :: ";
-	string host;
-	int port;
-	string filePath;
+string TSay = "Transmitter :: ";
+string host, filePath;
+int port;
+
+//Form untuk handle ketidak-valid-an input
+void inputHandle(){
+	cout << TSay << "IP Address/Hostname : ";
+	cin >> host;
+	cout << TSay << "Port : ";
+	cin >> port;
+	cout << TSay << "File Path : ";
+	cin >> filePath;
+}
+//Main program
+int main(int argc, char *argv[]){
+
 	//Input IP Adress/Hostname, Port Number, File
-	if (argv[1]&&argv[2]&&argv[3]){
+	if (argc >= 4){
 		host = argv[1];
 		port = atoi(argv[2]);
 		filePath = argv[3];
 	//Input Handle
+	}else if(argc < 4){
+		cout << TSay << "Argumen yang anda berikan kurang lengkap, silahkan lengkapi kembali,";
+		inputHandle();
 	}else{
-		cout << TSay << "Please input information below,\n";
-		cout << TSay << "IP Address/Hostname : ";
-		cin >> host;
-		cout << TSay << "Port : ";
-		cin >> port;
-		cout << TSay << "File Path : ";
-		cin >> filePath;
+		cout << TSay << "Silahkan lengkapi argumen anda,\n";
+		inputHandle();
 	}
 	cout << TSay << "[" << host << "][" << port << "][" << filePath << "]\n";
 //Proses Data
 	//Buat Socket
+		//define address and type
+		try{
+			ClientSocket client_socket ( host, port );
+
+	     	string reply;
+	    	try{
+			  	client_socket << "Test message.";
+			  	client_socket >> reply;
+			}catch ( SocketException& except ) {
+				cout << TSay << "exception was caught : " << except.description() << "\n";
+			}
+
+	      	cout << TSay << "We received this response from the server:\n\"" << reply << "\"\n";
+
+		}catch( SocketException& except ){
+			cout << TSay << "exception was caught : " << except.description() << "\n";
+		}
 	//Buat proses anak
 		//Parent
 			//Kirim Data ketika XON
@@ -60,6 +89,11 @@ int main(int argc, char *argv[]){
 /* Notes : 
 * - Output harus jelas 
 * - Header Sample dimasukinnya jangan langsung semua, satu" aja biar ngerti.
+*/
+
+/* Reference :
+* Socket : http://tldp.org/LDP/LG/issue74/tougher.html
+*
 */
 
 

@@ -7,9 +7,12 @@
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
+#include "ServerSocket.h"
+#include "SocketException.h"
+
 using namespace std;
 
-//Receiver
+//Receiver - Server
 
 int main(int argc, char *argv[]){
 //Init
@@ -25,6 +28,25 @@ int main(int argc, char *argv[]){
 	}
 //Terima Data
 	//buat socket dan bind di port
+	try{
+		ServerSocket server (port);
+		while (true) {
+			ServerSocket new_sock;
+			server.accept (new_sock);
+			try{
+				while(true){
+					string data;
+					new_sock >> data;
+					new_sock << data;
+				}
+			}catch( SocketException& except ){
+				cout << RSay << "exception was caught : " << except.description() << "\n";
+			}
+
+		}
+	}catch( SocketException& except ){
+		cout << RSay << "exception was caught : " << except.description() << "\n";
+	}
 	//buat proses anak
 		//Parent
 			//call rcvchar -> karakter dari socket simpan ke buffer until EOF
@@ -63,6 +85,10 @@ int main(int argc, char *argv[]){
 * - Header Sample dimasukinnya jangan langsung semua, satu" aja biar ngerti.
 */
 
+/* Reference :
+* Socket : http://tldp.org/LDP/LG/issue74/tougher.html
+*
+*/
 
 
 

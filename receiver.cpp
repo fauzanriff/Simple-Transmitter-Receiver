@@ -59,6 +59,7 @@ int main(int argc, char *argv[]){
 * - tambahkan delay antar rcvchar dan q_get() agar terjadi XOFF 
 * - receiver jalan lebih dulu sebelum transmitter
 * - output harus jelas
+* - Header Sample dimasukinnya jangan langsung semua, satu" aja biar ngerti.
 */
 
 

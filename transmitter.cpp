@@ -11,7 +11,7 @@ using namespace std;
 
 //Transmitter
 
-int main(){}
+int main(int argc, char *argv[]){
 //Init
 	string TSay = "Transmitter :: ";
 	string host;
@@ -57,4 +57,14 @@ int main(){}
 															*/
 }
 
-/* Notes : Output harus jelas */
+/* Notes : 
+* - Output harus jelas 
+* - Header Sample dimasukinnya jangan langsung semua, satu" aja biar ngerti.
+*/
+
+
+
+
+
+
+

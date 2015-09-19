@@ -17,11 +17,12 @@ int main(int argc, char *argv[]){
 	string host;
 	int port;
 	string filePath;
-	//Input IP Adress/Hostname, Port Number
+	//Input IP Adress/Hostname, Port Number, File
 	if (argv[1]&&argv[2]&&argv[3]){
 		host = argv[1];
 		port = atoi(argv[2]);
 		filePath = argv[3];
+	//Input Handle
 	}else{
 		cout << TSay << "Please input information below,\n";
 		cout << TSay << "IP Address/Hostname : ";
@@ -32,7 +33,6 @@ int main(int argc, char *argv[]){
 		cin >> filePath;
 	}
 	cout << TSay << "[" << host << "][" << port << "][" << filePath << "]\n";
-	//Input File
 //Proses Data
 	//Buat Socket
 	//Buat proses anak

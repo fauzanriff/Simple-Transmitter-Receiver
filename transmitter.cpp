@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
+#include <unistd.h>
 #include "ClientSocket.h"
 #include "SocketException.h"
 
@@ -55,6 +56,37 @@ int main(int argc, char *argv[]){
 	    	try{
 			  	client_socket << "Test message.";
 			  	client_socket >> reply;
+
+			  	//Buat proses anak
+			  	pid_t pid = fork();
+
+			  	if (pid == 0){
+			  		//Child
+						//terima XON or XOFF
+						//baca data recvfrom()
+																		/*
+																		*repeat
+																		*	ch <- read a character from socket last received char <- ch
+																		*	until connection is terminated
+																		*/
+			  	}else if (pid > 0){
+			  		//Parent
+						//Kirim Data ketika XON
+							//Untuk setiap File
+								//Kirim 1 karakter sendto()
+																		/*
+																		*while not end of file do
+																		*	if last received char is not XOFF then
+																		*	ch <- read a character from file send ch through socket
+																		*/
+						//Ketika XOFF
+							//Tunggu sinyal XON
+			  	}else{
+			  		//Error Fork
+			  	}
+					
+					
+
 			}catch ( SocketException& except ) {
 				cout << TSay << "exception was caught : " << except.description() << "\n";
 			}
@@ -64,26 +96,6 @@ int main(int argc, char *argv[]){
 		}catch( SocketException& except ){
 			cout << TSay << "exception was caught : " << except.description() << "\n";
 		}
-	//Buat proses anak
-		//Parent
-			//Kirim Data ketika XON
-				//Untuk setiap File
-					//Kirim 1 karakter sendto()
-															/*
-															*while not end of file do
-															*	if last received char is not XOFF then
-															*	ch <- read a character from file send ch through socket
-															*/
-			//Ketika XOFF
-				//Tunggu sinyal XON
-		//Child
-			//terima XON or XOFF
-			//baca data recvfrom()
-															/*
-															*repeat
-															*	ch <- read a character from socket last received char <- ch
-															*	until connection is terminated
-															*/
 }
 
 /* Notes : 

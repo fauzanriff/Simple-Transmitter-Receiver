@@ -4,21 +4,15 @@
 //Problem : Aliran data dari transmitter ke receiver lebih cepat dibandingkan pemrosesan data di receiver.
 //Solution : Bentuk sebuah mekanisme aliran data dengan flow control, gunakan bahasa c++.
 
-#include <stdio.h>
-#include <iostream>
-#include <stdlib.h>
-#include <unistd.h>
-#include "ServerSocket.h"
-#include "SocketException.h"
-
+#include "receiver.h"
 using namespace std;
 
-//Receiver - Server
+//Receiver
 
 int main(int argc, char *argv[]){
 //Init
-	string RSay= "Receiver :: ";
-	int port=8080;
+	pthread_t consumer;
+	messageXONXOFF = (char*) malloc (1);
 	//Input port
 	if (argv[1]){
 		port = atoi(argv[1]);
@@ -29,62 +23,146 @@ int main(int argc, char *argv[]){
 	}
 //Terima Data
 	//buat socket dan bind di port
-	try{
-		ServerSocket server (port);
-		while (true) {
-			ServerSocket new_sock;
-			server.accept (new_sock);
-			try{
-				while(true){
-					string data;
-					new_sock >> data;
-					cout << RSay << "file received\n";
-					new_sock << data;
+	sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (sock < 0){
+		cout << RSay << "Socket failed.\n";
+	}
 
-					//buat proses anak
-					pid_t pid = fork();
+	//address structure
+	memset(&echoServAddr, 0, sizeof(echoServAddr));		/* Zero out structure */
+    echoServAddr.sin_family = AF_INET;                	/* Internet address family */
+    echoServAddr.sin_addr.s_addr = htonl(INADDR_ANY); 	/* Any incoming interface */
+    echoServAddr.sin_port = htons(port);      	/* Local port */
 
-					if (pid == 0){
-						//Child
-							//Terima data per-karakter q_get() -dari buffer-
-								//check karakter (ada&falid)
-								//deteksi emptySpace : nCharInBuffer < maximum lowerlimit
-									//YES emptySpace
-										//send XON
-																	/*
-																	*repeat
-														            *    if buffer count > 0 then
-																	*		read a character from the buffer;
-																	*		decrement the buffer count;
-																	*		is it a valid character? ( >32, CR, LF atau end-of-file)
-																	*until valid character;
-																	*if buffer count < maximum lowerlimit then
-																	*	send XON to the transmitter;
-																	*/
-								//Proses Data (buat delay)
-					}else if (pid > 0){
-						//Parent
-							//call rcvchar -> karakter dari socket simpan ke buffer until EOF
-								//buffer : circular buffer
-								//deteksi overflow : nCharInBuffer > minimum upperlimit
-									//YES overflow
-										//send XOFF
-																	/*
-																	*read the character into the buffer and increment the buffer pointers properly;
-																	*if the number of characters in the buffer > minimum upperlimit then
-																	*	send XOFF to the transmitter;
-																	*/
-					}else{
-						//error Fork
-					}
-				} //end while
-			}catch( SocketException& except ){
-				cout << RSay << "exception was caught : " << except.description() << "\n";
+	/* Bind to the local address */
+    if (bind(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
+        cout << RSay << "Bind failed.\n";
+	cout << RSay << "Bind to : \t" << port << "\n";
+
+	//buat proses anak
+	pthread_create(&consumer, NULL, consumerThread, NULL); //membuat thread konsumsi baru
+	//Parent
+	while(!allMessageReceived){
+		while(kar != '\0' || isImpossibleEndfile){
+			/* Set the size of the in-out parameter */
+			cliAddrLen = sizeof(echoClntAddr);
+			//menangani kemungkinan endfile yang ambigu
+			if(kar==SOH || kar==ETX){
+				isImpossibleEndfile = true;	//flag bahwa byte berikutnya yang diterima pasti 
+											//bukan Endfile walaupun bernilai Endfile
+			} else {
+				isImpossibleEndfile = false;	//flag bahwa byte berikutnya mungkin Endfile 
+											//jika memang bernilai Endfile					
+			}
+			endFileReceived = -1;
+			kar = *(rcvchar(sock, rxq));   	//call rcvchar -> karakter dari socket simpan ke buffer until EOF
+		}
+	}
+	//Diterima endfile yang memang akhir dari pengiriman
+    pthread_join(consumer,NULL);
+	
+	return 0;
+}
+
+void *consumerThread(void *args){
+	Byte *c = NULL;
+	int m = 0;
+	while(true){
+		c = q_get(rxq);
+		if (c != NULL){
+			//jika tidak kosong maka periksa apakah byte yang diterima merupakan endfile
+			if(!wontConsumingEndfile && (*c)=='\0' && endFileReceived == 2) return NULL;
+			//menangani kemungkinan endfile yang ambigu
+			if(*c==SOH || *c==ETX){
+				wontConsumingEndfile = true;	//flag bahwa byte berikutnya yang diterima pasti 
+											//bukan Endfile walaupun bernilai Endfile
+			} else {
+				wontConsumingEndfile = false;	//flag bahwa byte berikutnya mungkin Endfile 
+											//jika memang bernilai Endfile					
+			}
+			cout << RSay << "Receive " << m++ << "-data : " << c << "\n";
+		}
+		usleep(DELAY*1000);
+		
+	}
+}
+
+int n = 0;
+static Byte *rcvchar(int sockfd, QTYPE *queue){
+	Byte *c;
+
+	recvMsgSize = recvfrom(sockfd, echoBuffer, ECHOMAX, 0, (struct sockaddr *) &echoClntAddr, &cliAddrLen);
+	if (recvMsgSize < 0){
+		cout << RSay << "Receiving message from socket failed.\n";
+	}
+
+	c = (Byte*) malloc(sizeof(Byte));
+
+	*c = echoBuffer[0];
+	n++;
+
+	if (*c == '\0'){
+		endFileReceived = 0;
+	}
+
+	//Buffer
+	if ((*queue).count < 8){						//pastikan buffer tidak penuh
+		if((*queue).count != 0){					//jika buffer tidak kosong
+			//menggerakkan bagian belakang queue
+			if((*queue).rear==7){					//iterasi rear nya jika sudah paling belakang
+				(*queue).rear = 0; 
+			} else {								//iterasi rearnya jika masih belum di belakang
+				(*queue).rear++;
+			}
+			((*queue).data)[(*queue).rear] = *c;
+		}else{										//jika buffer kosong
+			((*queue).data)[(*queue).rear] = *c;
+		}
+		(*queue).count++;
+	}
+	
+	if ((*queue).count >= MIN_UPPERLIMIT && sent_xonxoff == XON){
+		sent_xonxoff = XOFF;
+		messageXONXOFF[0] = XOFF;
+
+		if(sendto(sockfd, messageXONXOFF, sizeof(messageXONXOFF), 0, (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(messageXONXOFF)){
+			cout << RSay << "Sent different number of bytes.\n";
+		}
+		cout << RSay << "XOFF sent. Counter Buffer > Minimum Upper Limit.\n";
+	}
+	return c;
+}
+
+static Byte *q_get(QTYPE *queue){
+	Byte *c = NULL;
+	//jika count 0
+	if (!queue->count){
+		return NULL;
+	}else{
+		c = (Byte*) malloc (sizeof(Byte)); 
+		*c = queue->data[queue->front];
+		if (queue->count > 1){
+			if(queue->front == 7){
+				queue->front = 0;
+			}else{
+				queue->front++;
 			}
 		}
-	}catch( SocketException& except ){
-		cout << RSay << "exception was caught : " << except.description() << "\n";
+		queue->count--;
+
+		//Kirim XON jika dibawah lowerlimit
+		if(queue->count <= MAX_LOWERLIMIT && sent_xonxoff == XOFF){
+			sent_xonxoff = XON;
+			messageXONXOFF[0] = XON;
+
+			if(sendto(sock, messageXONXOFF, sizeof(messageXONXOFF), 0, (struct sockaddr *) &echoClntAddr, sizeof(echoClntAddr)) != sizeof(messageXONXOFF)){
+				cout << RSay << "Sent different number of bytes.\n";
+			}
+			cout << RSay << "XON sent. Counter Buffer < Maximum Lower Limit.\n";
+		}
+
 	}
+	return c;
 }
 
 /* Notes : 
@@ -94,10 +172,6 @@ int main(int argc, char *argv[]){
 * - Header Sample dimasukinnya jangan langsung semua, satu" aja biar ngerti.
 */
 
-/* Reference :
-* Socket : http://tldp.org/LDP/LG/issue74/tougher.html
-*
-*/
 
 
 

@@ -1,7 +1,7 @@
 all : receiver transmitter
 
 receiver :
-	g++ -o receiver receiver.cpp ServerSocket.cpp Socket.cpp
+	g++ -o receiver receiver.cpp
 
 transmitter : 
-	g++ -o transmitter transmitter.cpp ClientSocket.cpp Socket.cpp
+	g++ -o transmitter transmitter.cpp
